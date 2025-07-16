@@ -41,8 +41,8 @@
 }
 
     .fade-enter {
-    opacity: 0;
-    transform: translateY(20px);
+      opacity: 0;
+      transform: translateY(20px);
   }
   .fade-enter-active {
     opacity: 1;
@@ -95,7 +95,8 @@
         </div>
       </div>
       <div class="text-center mt-8 space-x-4">
-        <button onclick="nextStep(1)" class="bg-yellow-500 hover:bg-yellow-600 text-black px-6 py-2 rounded">Next → Choose House</button>
+       <button onclick="if(currentVote.schoolCaptain.length > 0) nextStep(1); 
+          else alert('Please select at least one School Captain');" class="bg-yellow-500 hover:bg-yellow-600 text-black px-6 py-2 rounded">Next → Choose House</button>
       </div>
     </div>
 
@@ -141,7 +142,7 @@
 
   <script>
     const votes = [];
-    let currentVote = {};
+    let currentVote = {schoolCaptain: []};
 
     const houseData = {  "Red House": [
         { name: "Veer Raut", img: "images/r1.png", vision: "Discipline & spirit" },
@@ -166,10 +167,25 @@
    };
 
     function selectCandidate(role, element, candidate) {
-      currentVote[role] = candidate;
-      document.querySelectorAll(`#step${role === 'schoolCaptain' ? 1 : 3} .selected`).forEach(el => el.classList.remove('selected'));
+  if (role === 'schoolCaptain') {
+    if (!Array.isArray(currentVote.schoolCaptain)) currentVote.schoolCaptain = [];
+    const index = currentVote.schoolCaptain.indexOf(candidate);
+    if (index > -1) {
+      // Candidate already selected → deselect
+      currentVote.schoolCaptain.splice(index, 1);
+      element.classList.remove('selected');
+    } else {
+      // Select new candidate
+      currentVote.schoolCaptain.push(candidate);
       element.classList.add('selected');
     }
+  } else {
+    // House Captain (single selection)
+    currentVote[role] = candidate;
+    document.querySelectorAll(`#step3 .selected`).forEach(el => el.classList.remove('selected'));
+    element.classList.add('selected');
+  }
+}
 
     function selectHouse(element, house) {
       currentVote.house = house;
@@ -230,43 +246,59 @@ function previousStep(step) {
     }
 
     function submitVotes() {
-      document.getElementById('step3').classList.add('hidden');
-      document.getElementById('step4').classList.remove('hidden');
-      document.getElementById('summary').innerHTML = `
-        <p><strong>School Captain:</strong> ${currentVote.schoolCaptain}</p>
-        <p><strong>${currentVote.house}:</strong> ${currentVote.houseCaptain}</p>
-      `;
-      votes.push(currentVote);
-      currentVote = {};
-    }
+  document.getElementById('step3').classList.add('hidden');
+  document.getElementById('step4').classList.remove('hidden');
+
+  const schoolCaptains = Array.isArray(currentVote.schoolCaptain) 
+    ? currentVote.schoolCaptain.join(', ') 
+    : currentVote.schoolCaptain;
+
+  document.getElementById('summary').innerHTML = `
+    <p><strong>School Captain:</strong> ${schoolCaptains}</p>
+    <p><strong>${currentVote.house}:</strong> ${currentVote.houseCaptain}</p>
+  `;
+
+  votes.push({ ...currentVote });
+  currentVote = { schoolCaptain: [] };
+}
 
     function downloadCSV() {
-      const counts = {};
-      for (let vote of votes) {
-        for (let key in vote) {
-          const entry = `${key} - ${vote[key]}`;
+  const counts = {};
+  for (let vote of votes) {
+    for (let key in vote) {
+      if (Array.isArray(vote[key])) {
+        vote[key].forEach(item => {
+          const entry = `${key} - ${item}`;
           counts[entry] = (counts[entry] || 0) + 1;
-        }
+        });
+      } else {
+        const entry = `${key} - ${vote[key]}`;
+        counts[entry] = (counts[entry] || 0) + 1;
       }
-      const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-      let csvContent = "data:text/csv;charset=utf-8,Role - Candidate,Vote Count\n" +
-        sorted.map(e => `${e[0]},${e[1]}`).join("\n");
-
-      const encodedUri = encodeURI(csvContent);
-      const link = document.createElement("a");
-      link.setAttribute("href", encodedUri);
-      link.setAttribute("download", "election_results.csv");
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
     }
+  }
+
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  let csvContent = "data:text/csv;charset=utf-8,Role - Candidate,Vote Count\n" +
+    sorted.map(e => `${e[0]},${e[1]}`).join("\n");
+
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", "election_results.csv");
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
 
     function restart() {
-  document.getElementById('step4').classList.add('hidden');
-  document.getElementById('step1').classList.remove('hidden');
-  document.getElementById('summary').innerHTML = '';
-  document.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
-  currentVote = {};
+     document.getElementById('step4').classList.add('hidden');
+     document.getElementById('step1').classList.remove('hidden');
+     document.getElementById('summary').innerHTML = '';
+     ['step1', 'step2', 'step3'].forEach(id => {
+    document.querySelectorAll(`#${id} .selected`).forEach(el => el.classList.remove('selected'));
+  });
+     currentVote = {schoolCaptain: []};
 }
   </script>
 </body>
